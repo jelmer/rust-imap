@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Support for the quote extension (#235).
  - Support for the list-status extension (#249).
  - Expose APPENDUID data (#232).
+ - GSSAPI (Kerberos V5) SASL authenticator behind the `gssapi` feature flag, backed by the `libgssapi` crate.
 
 ### Changed
  - MSRV increased to 1.57.0 for 2021 edition and base64

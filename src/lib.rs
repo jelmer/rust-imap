@@ -73,6 +73,13 @@
 //! Even without `native_tls`, you can still use TLS by leveraging the pure Rust `rustls`
 //! crate, which is enabled with the `rustls-tls` feature. See the example/rustls.rs file
 //! for a working example.
+//!
+//! ## GSSAPI / Kerberos authentication
+//!
+//! The `gssapi` feature enables a built-in SASL `GSSAPI` authenticator backed by
+//! the `libgssapi` crate. It is opt-in because it requires a system GSSAPI
+//! library (e.g. MIT Kerberos or Heimdal) at link time. See the
+//! [`gssapi`](crate::gssapi) module and `examples/gssapi.rs` for usage.
 #![deny(missing_docs)]
 #![warn(rust_2018_idioms)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
@@ -84,6 +91,10 @@ pub mod types;
 
 mod authenticator;
 pub use crate::authenticator::Authenticator;
+
+#[cfg(feature = "gssapi")]
+#[cfg_attr(docsrs, doc(cfg(feature = "gssapi")))]
+pub mod gssapi;
 
 mod conn;
 pub use conn::{Connection, ImapConnection};

@@ -1596,7 +1596,16 @@ impl<T: Read + Write> Connection<T> {
                         continue_from = Some(line_start);
                         None
                     }
-                    _ => Some(Err((Status::Bye, None, None))),
+                    // A nom Error/Failure means the server sent bytes we
+                    // can't decode -- as opposed to a valid BYE, which the
+                    // Ok(Done { status: Bye, .. }) arm above would have
+                    // caught. Surface it as a parse error so callers can
+                    // tell "server ended session" from "server sent
+                    // something we don't understand".
+                    Err(_) => {
+                        let offending = line.to_vec();
+                        break Err(Error::Parse(ParseError::Invalid(offending)));
+                    }
                 }
             };
 
@@ -1773,6 +1782,25 @@ mod tests {
         let mut session = mock_session!(mock_stream);
         session.read_response().unwrap();
         session.read_response().unwrap();
+    }
+
+    #[test]
+    fn unparseable_response_surfaces_as_parse_error() {
+        // A response the parser can't decode used to be reported as a
+        // Bye, which then triggered a reconnect loop against a server
+        // that was actually fine. Real cases include Gmail's malformed
+        // BODYSTRUCTURE for messages with certain .mhtml attachments.
+        let response = "* 1 FETCH (BODYSTRUCTURE (\
+(\"TEXT\" \"PLAIN\" (\"CHARSET\" \"UTF-8\") NIL NIL \"7BIT\" 2 1 NIL NIL NIL) \
+(\"RELATED\" (\"NAME\" \"x.mhtml\") (\"ATTACHMENT\" (\"FILENAME\" \"x.mhtml\")) NIL) \
+\"MIXED\" (\"BOUNDARY\" \"b\") NIL NIL))\r\n\
+a0 OK FETCH completed\r\n";
+        let mock_stream = MockStream::new(response.as_bytes().to_vec());
+        let mut session = mock_session!(mock_stream);
+        match session.read_response() {
+            Err(Error::Parse(ParseError::Invalid(_))) => {}
+            other => panic!("expected Parse(Invalid), got {other:?}"),
+        }
     }
 
     #[test]
